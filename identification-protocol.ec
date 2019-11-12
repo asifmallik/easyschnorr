@@ -1,3 +1,4 @@
+require import Real.
 theory IdentificationProtocol.
 
 type sk_t.
@@ -16,21 +17,23 @@ module type V = {
   proc output () : bool
 }.
 
-module type Interaction (Prover: P, Verifier: V) = {
+module type I (Prover: P, Verifier: V) = {
   proc interact() : unit
 }.
 
-module Protocol (Gen : G, Prover : P, Verifier : V, I : Interaction) = {
-  module I = I(Prover, Verifier)
+module Protocol (Gen : G, Prover : P, Verifier : V, Interaction : I) = {
+  module Interaction = Interaction(Prover, Verifier)
   proc run () : bool = {
     var pk, sk, o;
     (sk,pk)<-Gen.generate();
     Prover.setup(sk);
     Verifier.setup(pk);
-    I.interact();
+    Interaction.interact();
     o <- Verifier.output();
     return o;
   } 
 }.
+
+axiom correctness (Gen <: G) (Prover <: P) (Verifier <: V) (Interaction <: I) &m : Pr[Protocol(Gen, Prover, Verifier, Interaction).run() @ &m : res] = 1%r.
 
 end IdentificationProtocol.
