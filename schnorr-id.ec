@@ -3,53 +3,52 @@
  * Boneh & Shoup, Figure 19.1
  *)
 
-require import CyclicGroup.
 require import Int.
+require import DiffieHellman.
+print DiffieHellman.G.
+clone export DiffieHellman.G as Group.
+require import IdentificationProtocol.
+print Group.
 
-require IdentificationProtocol.
-
-type g_t. (* Type of a group element?*)
-
-(* Instantiate an identification protocol -> types?
-*
-*clone import IdentificationProtocol with
-*type IdentificationProtocol.sk_t <- g_t.
-*type IdentificationProtocol.pk_t <- g_t.
-*g: a generator of G.
-* Z_q
-* C subset of Z_q
-*)
-
-module SchnorrGen : IdentificationProtocol.G = {
-  proc generate () : sk_t * pk_t  = {
-    var alpha, u;
-    (*  alpha =$..? take random element from Z_q *)
-    u <-  g^alpha;
+theory SchnorrProtocol.
+clone import IdentificationProtocol with
+type sk_t <- Group.FD.F.t,
+type pk_t <- Group.group.
+print Group.FD.FDistr.dt.
+print Group.FD.F.
+module SchnorrGen : G = {
+  proc generate () : Group.FD.F.t * Group.group  = {
+  var alpha, u;
+    alpha <$ Group.FD.F.FDistr.dt;
+    u <-  Group.g^alpha;
     return (alpha, u);
     }
-  }
+  }.
 
-module SchnorrProver : IdentificationProtocol.P = {
-  var s;
-  proc setup (secret: sk_t) : unit = {
+module SchnorrProver : P = {
+  var s : Group.FD.F.t
+  proc setup (secret: Group.FD.F.t) : unit = {
     s <- secret;
   }
-}
+}.
 
-module SchnorrVerifier : IdentificationProtocol.V = {
-  var p;
-  var u_t;
-  var a_z;
-  var c;
+module SchnorrVerifier : V = {
+  var p : Group.group
+  var u_t : Group.group
+  var a_z : Group.FD.F.t
+  var c : Group.FD.F.t
   
-  proc setup (image: pk_t) : unit = {
+  proc setup (image: Group.group) : unit = {
     p <- image;
     (* Init other variables to something? *)
-    return;
+    
   }
 
   proc output () : bool = {
-    return (g^a_z = u_t.u^c);
+    return (Group.g^a_z = u_t^c);
   }
+}.
+print Protocol.
+module SchnorrInteraction : I = {
+  proc interact = 
 }
-

@@ -1,5 +1,5 @@
 require import Real.
-theory IdentificationProtocol.
+abstract theory IdentificationProtocol.
 
 type sk_t.
 type pk_t.
@@ -33,7 +33,4 @@ module Protocol (Gen : G, Prover : P, Verifier : V, Interaction : I) = {
     return o;
   } 
 }.
-
-axiom correctness (Gen <: G) (Prover <: P) (Verifier <: V) (Interaction <: I) &m : Pr[Protocol(Gen, Prover, Verifier, Interaction).run() @ &m : res] = 1%r.
-
 end IdentificationProtocol.
