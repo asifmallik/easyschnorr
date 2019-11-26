@@ -14,6 +14,8 @@ type packet_t = [GroupPacket of group | FieldPacket of t].
 
 require import IdentificationProtocol.
 
+print IdentificationProtocol.
+
 theory SchnorrProtocol.
 clone import IdentificationProtocol with
 type sk_t <- t,
@@ -76,7 +78,6 @@ module SchnorrVerifier : V = {
   var step : int
   proc setup (image: Group.group) : unit = {
     u <- image;
-    (* Init other variables to something? *)
     step <- 2;
   }
 
@@ -111,4 +112,28 @@ module SchnorrVerifier : V = {
   }
 }.
 
-lemma correctness &m : Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res] = 1%r. proof. admit. qed. 
+lemma correctness &m : Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res] = 1%r.
+proof. admit. qed.
+
+
+print DiffieHellman.
+print DiffieHellman.CDH.
+
+  
+(* Theorem 19.1 with C = Z_q -> super-poly *)
+(* Instead of putting "DL is hard" as an axiom, reduction lemma. *)
+
+module DLAdv(Adv : IdentificationProtocol.DirectAdversary) : DiffieHellman.CDH.Adversary = {
+  proc solve (gx: G.group, gy : G.group) : G.group = {
+      return G.g; (* Placeholder *)
+   }
+}.
+
+lemma secure_direct:
+    forall (Adv <: IdentificationProtocol.DirectAdversary) &m,
+    Pr[IdentificationProtocol.DirectAttack(SchnorrGen, Adv, SchnorrVerifier).run() @ &m : res]
+    = Pr[DiffieHellman.CDH.CDH(DLAdv(Adv)).main() @ &m : res].
+
+proof.
+  admit.
+qed.

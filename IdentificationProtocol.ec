@@ -42,4 +42,35 @@ module Protocol (Gen : G, Prover : P, Verifier : V) = {
     return o;
   } 
 }.
+
+(* Define adversaries in new theory/file? *)
+
+print DiffieHellman.DDH.Adversary.
+print DiffieHellman.DDH.DDH0.
+  
+(* Definition 18.1 *)
+module type DirectAdversary = {
+    proc setup (v_k : pk_t) : unit
+    proc next_step (packet : packet_t) : packet_t
+}.
+
+module DirectAttack(Gen : G, Adv : DirectAdversary, Verifier : V) = {
+  proc run () : bool = {
+    var pk, sk, p, o, terminate;
+    (sk,pk)<-Gen.generate();
+    Adv.setup(pk); (* Init the adversary with v_k *)
+    Verifier.setup(pk);
+
+    terminate <- false;
+    p <- packet;
+    while (!terminate) {
+      p <- Adv.next_step(p);
+      (terminate, p) <- Verifier.next_step(p);
+    }
+
+    o <- Verifier.output();
+    return o;
+  } 
+}.
+
 end IdentificationProtocol.
