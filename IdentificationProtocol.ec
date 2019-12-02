@@ -1,10 +1,12 @@
 require import Real.
+require import List.
 abstract theory IdentificationProtocol.
 
 type sk_t.
 type pk_t.
-
+print List.
 type packet_t.
+type transcript_t = packet_t list. 
 
 op packet : packet_t.
 
@@ -24,22 +26,24 @@ module type V = {
 }.
 
 module Protocol (Gen : G, Prover : P, Verifier : V) = {
-  proc run () : bool = {
-    var pk, sk, p, o, terminate;
+  proc run () : transcript_t * bool = {
+    var pk, sk, p, o, terminate, transcript;
     (sk,pk)<-Gen.generate();
     Prover.setup(sk);
     Verifier.setup(pk);
 
     terminate <- false;
     p <- packet;
+    transcript <- [];
     while (!terminate) {
       p <- Prover.next_step(p);
+      transcript <- p :: transcript;
       (terminate, p) <- Verifier.next_step(p);
+      transcript <- p :: transcript;
     }
 
-
     o <- Verifier.output();
-    return o;
+    return (transcript, o);
   } 
 }.
 
@@ -55,21 +59,24 @@ module type DirectAdversary = {
 }.
 
 module DirectAttack(Gen : G, Adv : DirectAdversary, Verifier : V) = {
-  proc run () : bool = {
-    var pk, sk, p, o, terminate;
+  proc run () : transcript_t * bool = {
+    var pk, sk, p, o, terminate, transcript;
     (sk,pk)<-Gen.generate();
     Adv.setup(pk); (* Init the adversary with v_k *)
     Verifier.setup(pk);
 
     terminate <- false;
+    transcript <- [];
     p <- packet;
     while (!terminate) {
       p <- Adv.next_step(p);
+      transcript <- p :: transcript;
       (terminate, p) <- Verifier.next_step(p);
+      transcript <- p :: transcript;
     }
 
     o <- Verifier.output();
-    return o;
+    return (transcript, o);
   } 
 }.
 

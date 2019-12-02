@@ -112,7 +112,7 @@ module SchnorrVerifier : V = {
   }
 }.
 
-lemma correctness &m : Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res] = 1%r.
+lemma correctness &m : Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res.`2] = 1%r.
 proof. admit. qed.
 
 
@@ -131,7 +131,7 @@ module DLAdv(Adv : IdentificationProtocol.DirectAdversary) : DiffieHellman.CDH.A
 
 lemma secure_direct:
     forall (Adv <: IdentificationProtocol.DirectAdversary) &m,
-    Pr[IdentificationProtocol.DirectAttack(SchnorrGen, Adv, SchnorrVerifier).run() @ &m : res]
+    Pr[IdentificationProtocol.DirectAttack(SchnorrGen, Adv, SchnorrVerifier).run() @ &m : res.`2]
     = Pr[DiffieHellman.CDH.CDH(DLAdv(Adv)).main() @ &m : res].
 
 proof.
