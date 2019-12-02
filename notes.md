@@ -18,3 +18,9 @@
 
 
 
+**Rewinding lemma.**
+
+Splitting and re-running the adversary.
+
+https://lists.gforge.inria.fr/pipermail/easycrypt-club/2019-June/000865.html
+
