@@ -64,6 +64,7 @@ module SchnorrProver : P = {
       step = 3;
     } else {      
       r3 <@ stepThree(get_field_packet prev_packet);
+      o <- FieldPacket r3;
     }
     return o;
   }
@@ -113,11 +114,19 @@ module SchnorrVerifier : V = {
 }.
 
 lemma correctness &m : Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res.`2] = 1%r.
-proof. admit. qed.
-
-
-print DiffieHellman.
-print DiffieHellman.CDH.
+proof.
+  byphoare; [ | trivial | trivial].
+  proc. inline*. auto. unroll 13. unroll 14.
+  seq 14 : (Group.g ^ SchnorrVerifier.a_z =
+  SchnorrVerifier.u_t * SchnorrVerifier.u ^ SchnorrVerifier.c /\ terminate).
+  auto. rcondt 13. auto. rcondt 14; auto. rcondt 21; auto. rcondt 30; auto.
+  rcondf 31; auto. rcondf 37; auto. simplify. rewrite FDistr.dt_ll; simplify.
+  rewrite /predT; simplify. smt.
+  while (terminate /\ Group.g ^ SchnorrVerifier.a_z = SchnorrVerifier.u_t
+  * SchnorrVerifier.u ^ SchnorrVerifier.c ) 0. move=>z.
+  auto. exfalso; smt. skip. move => &h [a ->] //=. hoare. rcondt 13; auto.
+  rcondt 14; auto. rcondt 21; auto. rcondt 30; auto. rcondf 31; auto.
+  rcondf 37; auto. smt. trivial. qed.
 
   
 (* Theorem 19.1 with C = Z_q -> super-poly *)
