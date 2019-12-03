@@ -52,7 +52,7 @@ module Protocol (Gen : G, Prover : P, Verifier : V) = {
 print DiffieHellman.DDH.Adversary.
 print DiffieHellman.DDH.DDH0.
   
-(* Definition 18.1 *)
+(* Attack Game 18.1 *)
 module type DirectAdversary = {
     proc setup (v_k : pk_t) : unit
     proc next_step (packet : packet_t) : packet_t

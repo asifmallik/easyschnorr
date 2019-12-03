@@ -113,20 +113,34 @@ module SchnorrVerifier : V = {
   }
 }.
 
-lemma correctness &m : Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res.`2] = 1%r.
+lemma correctness &m :
+    Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res.`2] = 1%r.
+    
 proof.
+  (* Transform in a pRHL statement *)  
   byphoare; [ | trivial | trivial].
+
+  (* Write all the protocol steps *)
   proc. inline*. auto. unroll 13. unroll 14.
+
+  (* Split into two HL goals at step 14 *)
   seq 14 : (Group.g ^ SchnorrVerifier.a_z =
   SchnorrVerifier.u_t * SchnorrVerifier.u ^ SchnorrVerifier.c /\ terminate).
-  auto. rcondt 13. auto. rcondt 14; auto. rcondt 21; auto. rcondt 30; auto.
-  rcondf 31; auto. rcondf 37; auto. simplify. rewrite FDistr.dt_ll; simplify.
-  rewrite /predT; simplify. smt.
-  while (terminate /\ Group.g ^ SchnorrVerifier.a_z = SchnorrVerifier.u_t
-  * SchnorrVerifier.u ^ SchnorrVerifier.c ) 0. move=>z.
-  auto. exfalso; smt. skip. move => &h [a ->] //=. hoare. rcondt 13; auto.
-  rcondt 14; auto. rcondt 21; auto. rcondt 30; auto. rcondf 31; auto.
-  rcondf 37; auto. smt. trivial. qed.
+
+  (* First 14 steps *)
+   auto. rcondt 13. auto. rcondt 14; auto. rcondt 21; auto. rcondt 30; auto.
+   rcondf 31; auto. rcondf 37; auto. simplify. rewrite FDistr.dt_ll; simplify.
+   rewrite /predT; simplify. smt.
+
+  (* Rest of the steps *)
+   while (terminate /\ Group.g ^ SchnorrVerifier.a_z = SchnorrVerifier.u_t
+   * SchnorrVerifier.u ^ SchnorrVerifier.c ) 0. move=>z.
+   auto. exfalso; smt. skip. move => &h [a ->] //=.
+   hoare. (* Transform pRHL with bound 0 into HL *) 
+   rcondt 13; auto.
+   rcondt 14; auto. rcondt 21; auto. rcondt 30; auto. rcondf 31; auto.
+   rcondf 37; auto. smt. trivial.
+qed.
 
   
 (* Theorem 19.1 with C = Z_q -> super-poly *)
