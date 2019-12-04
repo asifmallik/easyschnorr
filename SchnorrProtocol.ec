@@ -3,7 +3,7 @@
  * Boneh & Shoup, Figure 19.1
  *)
 
-require import Int.
+require import Int AllCore.
 require import DiffieHellman.
 print DiffieHellman.G.
 clone export DiffieHellman.G as Group.
@@ -142,21 +142,36 @@ proof.
    rcondf 37; auto. smt. trivial.
 qed.
 
-  
-(* Theorem 19.1 with C = Z_q -> super-poly *)
-(* Instead of putting "DL is hard" as an axiom, reduction lemma. *)
 
-module DLAdv(Adv : IdentificationProtocol.DirectAdversary) : DiffieHellman.CDH.Adversary = {
-  proc solve (gx: G.group, gy : G.group) : G.group = {
+
+section DirectSecurity.
+
+  declare module A : IdentificationProtocol.DirectAdversary.
+
+  (* Theorem 19.1 with C = Z_q -> super-poly *)
+  (* Instead of putting "DL is hard" as an axiom, reduction lemma. *)
+
+  local module B : DiffieHellman.CDH.Adversary = {
+    proc solve (gx: G.group, gy : G.group) : G.group = {
       return G.g; (* Placeholder *)
-   }
-}.
+    }
+  }.
 
-lemma secure_direct:
-    forall (Adv <: IdentificationProtocol.DirectAdversary) &m,
-    Pr[IdentificationProtocol.DirectAttack(SchnorrGen, Adv, SchnorrVerifier).run() @ &m : res.`2]
-    = Pr[DiffieHellman.CDH.CDH(DLAdv(Adv)).main() @ &m : res].
+  (* TODO: Add notations in the lemma *)
 
-proof.
-  admit.
-qed.
+  (* A's advantage in the direct attack game *)
+  (* op eps = Pr[IdentificationProtocol.DirectAttack(SchnorrGen, Adv, SchnorrVerifier).run() : res.`2]%r. *)
+  (* B's advantage in the DL game *)
+  (* op eps' = Pr[DiffieHellman.CDH.CDH(B).main() @ &m : res].*)
+  (* op N = Group.FD.F.q. (* C = Z_q here *) *)
+
+  print DiffieHellman.
+
+  local lemma secure_direct &m:
+    Pr[DiffieHellman.CDH.CDH(B).main() @ &m : res] >=
+    Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2]*(Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2] - 1%r/(Group.FD.F.q)%r).
+  proof.
+    admit.
+  qed.
+
+end section DirectSecurity.
