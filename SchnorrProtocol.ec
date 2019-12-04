@@ -151,8 +151,12 @@ section DirectSecurity.
   (* Theorem 19.1 with C = Z_q -> super-poly *)
   (* Instead of putting "DL is hard" as an axiom, reduction lemma. *)
 
+  (* TODO: Discrete Log *)
   local module B : DiffieHellman.CDH.Adversary = {
     proc solve (gx: G.group, gy : G.group) : G.group = {
+
+    (*  CDH.CDH(A0).main.r = G.g ^ (CDH.CDH(A0).main.x * CDH.CDH(A0).main.y) *)
+        
       return G.g; (* Placeholder *)
     }
   }.
