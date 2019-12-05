@@ -46,11 +46,6 @@ module Protocol (Gen : G, Prover : P, Verifier : V) = {
     return (transcript, o);
   } 
 }.
-
-(* Define adversaries in new theory/file? *)
-
-print DiffieHellman.DDH.Adversary.
-print DiffieHellman.DDH.DDH0.
   
 (* Attack Game 18.1 *)
 module type DirectAdversary = {

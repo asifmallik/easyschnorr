@@ -4,12 +4,11 @@
  *)
 
 require import Int AllCore.
-require import DiffieHellman.
-print DiffieHellman.G.
-clone export DiffieHellman.G as Group.
+require import CyclicGroup.
+require import DLog.
 
-type t = Group.FD.F.t.
-type group = Group.group.
+type t = CyclicGroup.FD.F.t.
+type group = CyclicGroup.group.
 type packet_t = [GroupPacket of group | FieldPacket of t].
 
 require import IdentificationProtocol.
@@ -31,8 +30,8 @@ with p = GroupPacket t => t with p = FieldPacket t => witness.
 module SchnorrGen : G = {
   proc generate () : t * group  = {
   var alpha, u;
-    alpha <$ Group.FD.FDistr.dt;
-    u <-  Group.g^alpha;
+    alpha <$ CyclicGroup.FD.FDistr.dt;
+    u <-  CyclicGroup.g^alpha;
     return (alpha, u);
     }
   }.
@@ -42,14 +41,14 @@ module SchnorrProver : P = {
   var a_t : t
   var step : int
 
-  proc setup (secret: Group.FD.F.t) : unit = {
+  proc setup (secret: CyclicGroup.FD.F.t) : unit = {
     a <- secret;
     step <- 1;
   }
 
-  proc stepOne() : Group.group = {
-      a_t <$ Group.FD.FDistr.dt;
-      return Group.g^a_t;
+  proc stepOne() : CyclicGroup.group = {
+      a_t <$ CyclicGroup.FD.FDistr.dt;
+      return CyclicGroup.g^a_t;
   }
 
   proc stepThree(c : t) : t = {
@@ -72,23 +71,23 @@ module SchnorrProver : P = {
 }.
 
 module SchnorrVerifier : V = {
-  var u : Group.group
-  var u_t : Group.group
-  var a_z : Group.FD.F.t
-  var c : Group.FD.F.t
+  var u : CyclicGroup.group
+  var u_t : CyclicGroup.group
+  var a_z : CyclicGroup.FD.F.t
+  var c : CyclicGroup.FD.F.t
   var step : int
-  proc setup (image: Group.group) : unit = {
+  proc setup (image: CyclicGroup.group) : unit = {
     u <- image;
     step <- 2;
   }
 
-  proc stepTwo (u_t' : Group.group) : Group.FD.F.t = {
+  proc stepTwo (u_t' : CyclicGroup.group) : CyclicGroup.FD.F.t = {
       u_t <- u_t';
-      c <$ Group.FD.FDistr.dt; (* TODO: replace with a subset of Z_q, C *)
+      c <$ CyclicGroup.FD.FDistr.dt; (* TODO: replace with a subset of Z_q, C *)
       return c;
   }
 
-  proc stepFour( a_z' : Group.FD.F.t) = {
+  proc stepFour( a_z' : CyclicGroup.FD.F.t) = {
     a_z <- a_z';
   }
 
@@ -109,7 +108,7 @@ module SchnorrVerifier : V = {
   } 
   
   proc output () : bool = {
-    return (Group.g^a_z = u_t * u^c);
+    return (CyclicGroup.g^a_z = u_t * u^c);
   }
 }.
 
@@ -124,7 +123,7 @@ proof.
   proc. inline*. auto. unroll 13. unroll 14.
 
   (* Split into two HL goals at step 14 *)
-  seq 14 : (Group.g ^ SchnorrVerifier.a_z =
+  seq 14 : (CyclicGroup.g ^ SchnorrVerifier.a_z =
   SchnorrVerifier.u_t * SchnorrVerifier.u ^ SchnorrVerifier.c /\ terminate).
 
   (* First 14 steps *)
@@ -133,7 +132,7 @@ proof.
    rewrite /predT; simplify. smt.
 
   (* Rest of the steps *)
-   while (terminate /\ Group.g ^ SchnorrVerifier.a_z = SchnorrVerifier.u_t
+   while (terminate /\ CyclicGroup.g ^ SchnorrVerifier.a_z = SchnorrVerifier.u_t
    * SchnorrVerifier.u ^ SchnorrVerifier.c ) 0. move=>z.
    auto. exfalso; smt. skip. move => &h [a ->] //=.
    hoare. (* Transform pRHL with bound 0 into HL *) 
@@ -151,13 +150,11 @@ section DirectSecurity.
   (* Theorem 19.1 with C = Z_q -> super-poly *)
   (* Instead of putting "DL is hard" as an axiom, reduction lemma. *)
 
-  (* TODO: Discrete Log *)
-  local module B : DiffieHellman.CDH.Adversary = {
-    proc solve (gx: G.group, gy : G.group) : G.group = {
-
-    (*  CDH.CDH(A0).main.r = G.g ^ (CDH.CDH(A0).main.x * CDH.CDH(A0).main.y) *)
-        
-      return G.g; (* Placeholder *)
+  print DLog.
+  print CyclicGroup.
+  local module B : DLog.StdAdversary = {
+    proc guess (h : CyclicGroup.group) : F.t = {        
+      return CyclicGroup.FD.F.one; (* Placeholder *)
     }
   }.
 
@@ -169,11 +166,9 @@ section DirectSecurity.
   (* op eps' = Pr[DiffieHellman.CDH.CDH(B).main() @ &m : res].*)
   (* op N = Group.FD.F.q. (* C = Z_q here *) *)
 
-  print DiffieHellman.
-
   local lemma secure_direct &m:
-    Pr[DiffieHellman.CDH.CDH(B).main() @ &m : res] >=
-    Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2]*(Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2] - 1%r/(Group.FD.F.q)%r).
+    Pr[DLog.DLogStdExperiment(B).main() @ &m : res] >=
+    Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2]*(Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2] - 1%r/(CyclicGroup.FD.F.q)%r).
   proof.
     admit.
   qed.
