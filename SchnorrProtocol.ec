@@ -6,7 +6,7 @@
 require import Int AllCore.
 require import CyclicGroup.
 require import DLog.
-
+require import List.
 type t = CyclicGroup.FD.F.t.
 type group = CyclicGroup.group.
 type packet_t = [GroupPacket of group | FieldPacket of t].
@@ -112,6 +112,8 @@ module SchnorrVerifier : V = {
   }
 }.
 
+
+
 lemma correctness &m :
     Pr[Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run() @ &m : res.`2] = 1%r.
     
@@ -145,11 +147,11 @@ qed.
 
 section DirectSecurity.
 
-  declare module A : IdentificationProtocol.DirectAdversary.
+  declare module A : IdentificationProtocol.DirectAdversary {SchnorrVerifier}.
 
   (* Theorem 19.1 with C = Z_q -> super-poly *)
   (* Instead of putting "DL is hard" as an axiom, reduction lemma. *)
-
+  
   print DLog.
   print CyclicGroup.
   local module B : DLog.StdAdversary = {
@@ -165,8 +167,56 @@ section DirectSecurity.
   (* B's advantage in the DL game *)
   (* op eps' = Pr[DiffieHellman.CDH.CDH(B).main() @ &m : res].*)
   (* op N = Group.FD.F.q. (* C = Z_q here *) *)
+  
+  axiom A_setup_ll : islossless A.setup.
+  module SimplifiedDirectAttackGame(Adv: IdentificationProtocol.DirectAdversary) = {
+    proc run() = {
+    var c,u_t,a_z,pk,sk,p,o,transcript;
+    sk <$ FDistr.dt;    
+    pk <- g ^ sk;         
+    Adv.setup(pk);            
+    p <- packet;          
+    transcript <- [];  
+    p <@ Adv.next_step(p);
+    transcript <- p :: transcript;
+    u_t <- get_group_packet p;
+    c <$ FDistr.dt;           
+    p <- FieldPacket c;
+    transcript <- p :: transcript;    
+    p <@ Adv.next_step(p);
+    transcript <- p :: transcript;        
+    a_z <- get_field_packet p;   
+    p <- witness;
+    transcript <- p :: transcript;     
+    o <- g ^ a_z = u_t * pk ^ c;
+    return (transcript, o);
+    }
+  }.
 
-  local lemma secure_direct &m:
+  local lemma eq_simplified_direct_attack_game &m :
+    equiv[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run ~
+    SimplifiedDirectAttackGame(A).run : ={glob A} ==> ={res}].
+      proof.
+        proc. inline *. sim. unroll{1} 11. unroll{1} 12.
+        seq 12 18 : (terminate{1} /\ ={transcript} /\
+        SchnorrVerifier.a_z{1} = a_z{2} /\
+        SchnorrVerifier.c{1} = c{2} /\
+        SchnorrVerifier.u_t{1} = u_t{2} /\
+        SchnorrVerifier.u{1} = pk{2}).
+        auto. rcondt{1} 11. move=> _. auto. call (_: true).
+        auto. rcondt{1} 14; auto. call(_:true).
+        auto. call(_:true). auto. rcondt{1} 23; auto.
+        call(_:true); auto. rcondf{1} 26; auto.
+        call(_:true). auto. call(_:true). auto.
+        sim. auto. sim.
+        while{1} (terminate{1} /\ ={transcript} /\
+        SchnorrVerifier.a_z{1} = a_z{2} /\
+        SchnorrVerifier.c{1} = c{2} /\
+        SchnorrVerifier.u_t{1} = u_t{2} /\
+        SchnorrVerifier.u{1} = pk{2} ) 0.
+      move=> &c d. exfalso; smt. skip. smt. qed. 
+
+    local lemma secure_direct &m:
     Pr[DLog.DLogStdExperiment(B).main() @ &m : res] >=
     Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2]*(Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2] - 1%r/(CyclicGroup.FD.F.q)%r).
   proof.
