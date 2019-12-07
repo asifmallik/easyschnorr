@@ -148,7 +148,8 @@ qed.
 section DirectSecurity.
 
   declare module A : IdentificationProtocol.DirectAdversary {SchnorrVerifier}.
-
+  declare module Ar : IdentificationProtocol.DirectAdversary {SchnorrVerifier}.
+  
   (* Theorem 19.1 with C = Z_q -> super-poly *)
   (* Instead of putting "DL is hard" as an axiom, reduction lemma. *)
   
@@ -169,6 +170,8 @@ section DirectSecurity.
   (* op N = Group.FD.F.q. (* C = Z_q here *) *)
   
   axiom A_setup_ll : islossless A.setup.
+  axiom Ar_setup_ll : islossless Ar.setup.
+  
   module SimplifiedDirectAttackGame(Adv: IdentificationProtocol.DirectAdversary) = {
     proc run() = {
     var c,u_t,a_z,pk,sk,p,o,transcript;
@@ -192,6 +195,24 @@ section DirectSecurity.
     return (transcript, o);
     }
   }.
+
+  module RewindingGame (Adv : IdentificationProtocol.DirectAdversary, AdvRewinded : IdentificationProtocol.DirectAdversary) = {
+    proc run() = {
+      var c1,c2,pk,sk,p;
+      sk <$ FDistr.dt;    
+      pk <- g ^ sk;         
+      Adv.setup(pk);            
+      p <- packet;          
+      c1 <@ Adv.next_step(p);
+      p <- packet;
+      AdvRewinded.setup(pk);
+      c2 <@ AdvRewinded.next_step(p);
+      return c1 = c2;
+    }
+  }.
+
+  axiom adversary_rewinding &m : hoare[RewindingGame(A, Ar).run : true ==> res].
+  axiom adversary_equivalence &m : equiv[SimplifiedDirectAttackGame(A).run ~ SimplifiedDirectAttackGame(Ar).run : true ==> ={res}].
 
   local lemma eq_simplified_direct_attack_game &m :
     equiv[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run ~
