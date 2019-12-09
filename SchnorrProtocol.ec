@@ -155,12 +155,6 @@ section DirectSecurity.
   
   print DLog.
   print CyclicGroup.
-  local module B : DLog.StdAdversary = {
-    proc guess (h : CyclicGroup.group) : F.t = {        
-      return CyclicGroup.FD.F.one; (* Placeholder *)
-    }
-  }.
-
   (* TODO: Add notations in the lemma *)
 
   (* A's advantage in the direct attack game *)
@@ -183,13 +177,13 @@ section DirectSecurity.
     p <@ Adv.next_step(p);
     transcript <- p :: transcript;
     u_t <- get_group_packet p;
-    c <$ FDistr.dt;           
+    c <$ FDistr.dt; (* transcript 2nd element *)           
     p <- FieldPacket c;
     transcript <- p :: transcript;    
     p <@ Adv.next_step(p);
     transcript <- p :: transcript;        
-    a_z <- get_field_packet p;   
-    p <- witness;
+    a_z <- get_field_packet p; (* transcript 1st element *)   
+    p <- witness; (* transcript 0th element *)
     transcript <- p :: transcript;     
     o <- g ^ a_z = u_t * pk ^ c;
     return (transcript, o);
@@ -237,6 +231,21 @@ section DirectSecurity.
         SchnorrVerifier.u{1} = pk{2} ) 0.
       move=> &c d. exfalso; smt. skip. smt. qed. 
 
+    
+     local module B : DLog.StdAdversary = {
+        module Game1 = SimplifiedDirectAttackGame(A)
+        module Game2 = SimplifiedDirectAttackGame(Ar)
+        proc guess (h : CyclicGroup.group) : F.t = {        
+           var o1,o2,t1,t2, da, dc;
+           (t1, o1) = Game1.run();
+           (t2, o2) = Game2.run();
+           da = get_field_packet(nth witness t1 1) - get_field_packet(nth witness t2 1);
+           dc = get_field_packet(nth witness t1 2) - get_field_packet(nth witness t2 2);
+           return da/dc;
+      }
+    }.
+
+    
     local lemma secure_direct &m:
     Pr[DLog.DLogStdExperiment(B).main() @ &m : res] >=
     Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2]*(Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2] - 1%r/(CyclicGroup.FD.F.q)%r).
