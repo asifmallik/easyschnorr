@@ -29,10 +29,10 @@ with p = GroupPacket t => t with p = FieldPacket t => witness.
 
 module SchnorrGen : G = {
   proc generate () : t * group  = {
-  var alpha, u;
-    alpha <$ CyclicGroup.FD.FDistr.dt;
-    u <-  CyclicGroup.g^alpha;
-    return (alpha, u);
+  var sk, pk;
+    sk <$ CyclicGroup.FD.FDistr.dt;
+    pk <-  CyclicGroup.g^sk;
+    return (sk, pk);
     }
   }.
 
@@ -166,10 +166,9 @@ section DirectSecurity.
   axiom A_setup_ll : islossless A.setup.
   axiom Ar_setup_ll : islossless Ar.setup.
   
-  module SimplifiedDirectAttackGame(Adv: IdentificationProtocol.DirectAdversary) = {
-    proc run() = {
-    var c,u_t,a_z,pk,sk,p,o,transcript;
-    sk <$ FDistr.dt;    
+  module SimplifiedDirectAttackGameKernel(Adv: IdentificationProtocol.DirectAdversary) = {
+    proc run(sk : F.t) = {
+    var c,u_t,a_z,pk,p,o,transcript;
     pk <- g ^ sk;         
     Adv.setup(pk);            
     p <- packet;          
@@ -190,6 +189,53 @@ section DirectSecurity.
     }
   }.
 
+  module SimplifiedDirectAttackGame(Adv : IdentificationProtocol.DirectAdversary) = {
+    module Kernel = SimplifiedDirectAttackGameKernel(Adv)
+      proc run () = {
+      var sk,transcript,o;
+      sk <$ FDistr.dt;
+      (transcript,o) <@ Kernel.run(sk);
+      return (transcript,o);
+    }
+  }.
+
+  module SimplifiedInteractionGame = {
+    proc run () = {
+      var sk,transcript,pk,o,u_t,a_z,c,a_t;
+      sk <$ FDistr.dt;
+      pk <- g^sk;
+      transcript <- [];
+      a_t <$ CyclicGroup.FD.FDistr.dt;
+      u_t <- g^a_t;
+      transcript <- GroupPacket u_t :: transcript;
+      c <$ CyclicGroup.FD.FDistr.dt;
+      transcript <- FieldPacket c :: transcript;
+      a_z <- a_t + sk * c;
+      transcript <- FieldPacket a_z :: transcript;
+      transcript <- witness :: transcript;
+      o <- g^a_z = u_t * pk^c;
+      return (transcript,o);
+    }
+  }.
+
+  module SimulatorGame = {
+    proc run () = {
+      var transcript, o, a_z, c, u_t, sk, pk;
+      sk <$ FDistr.dt;
+      pk <- g^sk;
+      a_z <$ CyclicGroup.FD.FDistr.dt;
+      c <$ CyclicGroup.FD.FDistr.dt;
+      u_t <- g^a_z/pk^c;
+      transcript <- [];
+      transcript <- GroupPacket u_t :: transcript;
+      transcript <- FieldPacket c :: transcript;
+      transcript <- FieldPacket a_z :: transcript;
+      transcript <- witness :: transcript;
+      o <- g^a_z = u_t * pk^c;
+      return (transcript, o);
+    }
+  }.
+  
   module RewindingGame (Adv : IdentificationProtocol.DirectAdversary, AdvRewinded : IdentificationProtocol.DirectAdversary) = {
     proc run() = {
       var c1,c2,pk,sk,p;
@@ -213,7 +259,7 @@ section DirectSecurity.
     SimplifiedDirectAttackGame(A).run : ={glob A} ==> ={res}].
       proof.
         proc. inline *. sim. unroll{1} 11. unroll{1} 12.
-        seq 12 18 : (terminate{1} /\ ={transcript} /\
+        seq 12 18 : (terminate{1} /\ transcript{1}=transcript0{2} /\
         SchnorrVerifier.a_z{1} = a_z{2} /\
         SchnorrVerifier.c{1} = c{2} /\
         SchnorrVerifier.u_t{1} = u_t{2} /\
@@ -224,7 +270,7 @@ section DirectSecurity.
         call(_:true); auto. rcondf{1} 26; auto.
         call(_:true). auto. call(_:true). auto.
         sim. auto. sim.
-        while{1} (terminate{1} /\ ={transcript} /\
+        while{1} (terminate{1} /\ transcript{1}=transcript0{2} /\
         SchnorrVerifier.a_z{1} = a_z{2} /\
         SchnorrVerifier.c{1} = c{2} /\
         SchnorrVerifier.u_t{1} = u_t{2} /\
@@ -245,11 +291,39 @@ section DirectSecurity.
       }
     }.
 
-    
-    local lemma secure_direct &m:
+    local lemma simplified_interaction &m : equiv[IdentificationProtocol.Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run ~ SimplifiedInteractionGame.run : true ==> ={res}].
+        proof. proc.
+          inline *. sim.
+          unroll{1} 13. unroll{1} 14. (* unrolls while loop*)
+          
+          seq 14 11 : (terminate{1} /\ transcript{1} = transcript{2} /\ SchnorrVerifier.a_z{1} = a_z{2} /\
+        SchnorrVerifier.c{1} = c{2} /\
+        SchnorrVerifier.u_t{1} = u_t{2} /\ SchnorrVerifier.u{1} = pk{2}). (* splits goal in two PRHL statements*)
+          (* reasons about if/else statements*)
+          rcondt{1} 13. move=> _. auto.
+          rcondt{1} 14. move=> _. auto.
+          rcondt{1} 21. move=> _. auto.
+          rcondt{1} 30. move=> _. auto.
+          rcondf{1} 31. move=> _. auto.
+          rcondf{1} 37. move=> _. auto.
+          auto.
+
+        (* remove while loop that terminates immediately *)
+          while{1} (terminate{1} /\ transcript{1}=transcript{2} /\
+        SchnorrVerifier.a_z{1} = a_z{2} /\
+        SchnorrVerifier.c{1} = c{2} /\
+        SchnorrVerifier.u_t{1} = u_t{2} ) 0.
+        move=> &c d. exfalso; smt. skip. trivial. qed.
+
+      local lemma HVZK &m : equiv[IdentificationProtocol.Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run ~ SimulatorGame.run : true ==> res{1}.`2 = res{2}.`2 ].
+          proof.
+          admit.
+          qed.
+
+      local lemma secure_direct &m:
     Pr[DLog.DLogStdExperiment(B).main() @ &m : res] >=
     Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2]*(Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2] - 1%r/(CyclicGroup.FD.F.q)%r).
-  proof.
+  proof. byphoare; [| trivial | trivial]. proc. 
     admit.
   qed.
 
