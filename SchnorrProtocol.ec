@@ -315,7 +315,7 @@ section DirectSecurity.
         SchnorrVerifier.u_t{1} = u_t{2} ) 0.
         move=> &c d. exfalso; smt. skip. trivial. qed.
 
-      local lemma HVZK &m : equiv[IdentificationProtocol.Protocol(SchnorrGen, SchnorrProver, SchnorrVerifier).run ~ SimulatorGame.run : true ==> res{1}.`2 = res{2}.`2 ].
+      local lemma HVZK &m : equiv[SimplifiedInteractionGame.run ~ SimulatorGame.run : true ==> res{1}.`1 = res{2}.`1 ].
           proof.
           admit.
           qed.
