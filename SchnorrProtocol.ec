@@ -220,15 +220,16 @@ section DirectSecurity.
 
   module SimulatorGame = {
     proc run () = {
-      var transcript, o, a_z, c, u_t, sk, pk;
+      var transcript, o, a_t, a_z, c, u_t, sk, pk;
       sk <$ FDistr.dt;
       pk <- g^sk;
-      a_z <$ CyclicGroup.FD.FDistr.dt;
+      a_t <$ CyclicGroup.FD.FDistr.dt;
       c <$ CyclicGroup.FD.FDistr.dt;
-      u_t <- g^a_z/pk^c;
+      u_t <- g^a_t/pk^c;
       transcript <- [];
       transcript <- GroupPacket u_t :: transcript;
       transcript <- FieldPacket c :: transcript;
+      a_z = a_t;
       transcript <- FieldPacket a_z :: transcript;
       transcript <- witness :: transcript;
       o <- g^a_z = u_t * pk^c;
@@ -317,10 +318,19 @@ section DirectSecurity.
 
       local lemma HVZK &m : equiv[SimplifiedInteractionGame.run ~ SimulatorGame.run : true ==> res{1}.`1 = res{2}.`1 ].
           proof.
-          proc. wp. simplify.
+            proc. wp. simplify.
+            swap{2} 3 1. swap{1} 6 1. swap{1} 5 1. swap{1} 4 1. (*swap order of sampling*)
+          
+            (*showing bijective relation between distributions on both sides*)
+            wp. rnd (fun a => a + sk{1} * c{1}) (fun a => a - sk{1} *c{1}). auto.
+
+            (*ambient logic*)
+            simplify. move=> sk. move=> -> /=  cl -> /=. split. smt.
+            move=> st. split. smt. move=> st2. move=> a_tL a_tL_in. split.
+            smt. move=> nin. split. smt. move=> _. smt.      
           qed.
 
-      local lemma secure_direct &m:
+    local lemma secure_direct &m:
     Pr[DLog.DLogStdExperiment(B).main() @ &m : res] >=
     Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2]*(Pr[IdentificationProtocol.DirectAttack(SchnorrGen, A, SchnorrVerifier).run() @ &m : res.`2] - 1%r/(CyclicGroup.FD.F.q)%r).
   proof. byphoare; [| trivial | trivial]. proc. 
