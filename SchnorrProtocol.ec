@@ -317,7 +317,7 @@ section DirectSecurity.
 
       local lemma HVZK &m : equiv[SimplifiedInteractionGame.run ~ SimulatorGame.run : true ==> res{1}.`1 = res{2}.`1 ].
           proof.
-          admit.
+          proc. wp. simplify.
           qed.
 
       local lemma secure_direct &m:
